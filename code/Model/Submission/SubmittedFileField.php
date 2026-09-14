@@ -98,7 +98,7 @@ class SubmittedFileField extends SubmittedFormField
                 }
             }
         }
-        return $values ? DBField::create_field('HTMLText', implode('<br>', $values)) : false;
+        return $values ? DBField::create_field('HTMLText', implode('<br>', $values)) : null;
     }
 
     /**
@@ -109,6 +109,24 @@ class SubmittedFileField extends SubmittedFormField
     public function getExportValue()
     {
         return ($links = $this->getLinks()) ? implode("\r", $links) : '';
+    }
+
+    /**
+     * Return the link for the file attached to this submitted form field.
+     * Keeping this around for backward compatibility
+     * @return string
+     */
+    public function getLink($grant = true)
+    {
+        if ($file = $this->getUploadedFileFromDraft()) {
+            if ($file->exists()) {
+                $url = $file->getURL($grant);
+                if ($url) {
+                    return Director::absoluteURL($url);
+                }
+                return null;
+            }
+        }
     }
 
     /**
@@ -130,6 +148,23 @@ class SubmittedFileField extends SubmittedFormField
             }, []);
         }
         return null;
+    }
+
+    /**
+     * As uploaded files are stored in draft by default, this retrieves the
+     * uploaded file from draft mode rather than using the current stage.
+     * Keeping this around for backward compatibility
+     * @return File
+     */
+    public function getUploadedFileFromDraft()
+    {
+        $fileId = $this->UploadedFileID;
+
+        return Versioned::withVersionedMode(function () use ($fileId) {
+            Versioned::set_stage(Versioned::DRAFT);
+
+            return File::get()->byID($fileId);
+        });
     }
 
     /**
@@ -157,6 +192,18 @@ class SubmittedFileField extends SubmittedFormField
 
             return $this->uploadedFilesCache[$this->ID] = $files;
         });
+    }
+
+    /**
+     * Return the name of the file, if present
+     *
+     * @return string
+     */
+    public function getFileName()
+    {
+        if ($file = $this->getUploadedFileFromDraft()) {
+            return $file->Name;
+        }
     }
 
     /**
