@@ -309,55 +309,13 @@ JS
 
             if (!empty($data[$field->Name])) {
                 if (in_array(EditableFileField::class, $field->getClassAncestry() ?? [])) {
-                    if (($names = $_FILES[$field->Name]['name'] ?? '') && (!is_array($names) || array_filter($names))) {
+
+                    $names = $_FILES[$field->Name]['name'] ?? '';
+                    if ($names && (!is_array($names) || array_filter($names))) {
+
                         if (!$field->getFolderExists()) {
                             $field->createProtectedFolder();
                         }
-
-                        $processFile = function ($fileData) use ($field, $form, &$attachments) {
-                            $file = Versioned::withVersionedMode(function () use ($fileData, $field, $form, &$attachments) {
-                                $stage = Injector::inst()->get(UserDefinedFormController::class)->config()->get('file_upload_stage');
-                                Versioned::set_stage($stage);
-
-                                $foldername = $field->getFormField()->getFolderName();
-                                // create the file from post data
-                                $upload = Upload::create();
-                                try {
-                                    $upload->loadIntoFile($fileData, null, $foldername);
-                                } catch (ValidationException $e) {
-                                    $validationResult = $e->getResult();
-                                    foreach ($validationResult->getMessages() as $message) {
-                                        $form->sessionMessage($message['message'], ValidationResult::TYPE_ERROR);
-                                    }
-                                    Controller::curr()->redirectBack();
-                                    return null;
-                                }
-                                /** @var AssetContainer|File $file */
-                                $file = $upload->getFile();
-                                $file->ShowInSearch = 0;
-                                $file->UserFormUpload = UserFormFileExtension::USER_FORM_UPLOAD_TRUE;
-                                $file->write();
-
-                                return $file;
-                            });
-
-                            if (is_null($file)) {
-                                return null;
-                            }
-
-                            // generate image thumbnail to show in asset-admin
-                            // you can run userforms without asset-admin, so need to ensure asset-admin is installed
-                            if (class_exists(AssetAdmin::class)) {
-                                AssetAdmin::singleton()->generateThumbnails($file);
-                            }
-
-                            // attach a file to recipient email only if lower than configured size
-                            if ($file->getAbsoluteSize() <= $this->getMaximumAllowedEmailAttachmentSize()) {
-                                $attachments[$field->Name][] = $file;
-                            }
-
-                            return $file;
-                        };
 
                         $files = $_FILES[$field->Name];
 
@@ -368,7 +326,7 @@ JS
                                     $fileData[$key] = $value[$index];
                                 }
 
-                                if (!$file = $processFile($fileData)) {
+                                if (!$file = $this->processUploadedFile($fileData, $field, $form, $attachments)) {
                                     return;
                                 }
 
@@ -376,7 +334,7 @@ JS
                                 $submittedField->UploadedFiles()->add($file);
                             }
                         } else {
-                            if (!$file = $processFile($files)) {
+                            if (!$file = $this->processUploadedFile($files, $field, $form, $attachments)) {
                                 return;
                             }
 
@@ -584,6 +542,64 @@ JS
         }
 
         return $this->redirect($this->Link('finished') . $referrer . $this->config()->get('finished_anchor'));
+    }
+
+    /**
+     * Create and process a single uploaded file from the submitted form data.
+     *
+     * The file is written in the configured upload stage and, if small enough, added to the
+     * email attachments for the field it was submitted against.
+     *
+     * @param array $fileData The entry from $_FILES for this file
+     * @param EditableFormField $field The form field the file was submitted against
+     * @param Form $form The submitted form
+     * @param array $attachments Email attachments, indexed by field name
+     * @return File|null
+     */
+    private function processUploadedFile($fileData, $field, $form, &$attachments)
+    {
+        $file = Versioned::withVersionedMode(function () use ($fileData, $field, $form) {
+            $stage = Injector::inst()->get(UserDefinedFormController::class)->config()->get('file_upload_stage');
+            Versioned::set_stage($stage);
+
+            $foldername = $field->getFormField()->getFolderName();
+            // create the file from post data
+            $upload = Upload::create();
+            try {
+                $upload->loadIntoFile($fileData, null, $foldername);
+            } catch (ValidationException $e) {
+                $validationResult = $e->getResult();
+                foreach ($validationResult->getMessages() as $message) {
+                    $form->sessionMessage($message['message'], ValidationResult::TYPE_ERROR);
+                }
+                Controller::curr()->redirectBack();
+                return null;
+            }
+            /** @var AssetContainer|File $file */
+            $file = $upload->getFile();
+            $file->ShowInSearch = 0;
+            $file->UserFormUpload = UserFormFileExtension::USER_FORM_UPLOAD_TRUE;
+            $file->write();
+
+            return $file;
+        });
+
+        if (is_null($file)) {
+            return null;
+        }
+
+        // generate image thumbnail to show in asset-admin
+        // you can run userforms without asset-admin, so need to ensure asset-admin is installed
+        if (class_exists(AssetAdmin::class)) {
+            AssetAdmin::singleton()->generateThumbnails($file);
+        }
+
+        // attach a file to recipient email only if lower than configured size
+        if ($file->getAbsoluteSize() <= $this->getMaximumAllowedEmailAttachmentSize()) {
+            $attachments[$field->Name][] = $file;
+        }
+
+        return $file;
     }
 
     /**

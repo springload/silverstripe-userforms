@@ -215,7 +215,7 @@ class EditableFileField extends EditableFormField
 
     public function getFormField()
     {
-        $field = FileField::create(($originalName = $this->Name) . ($this->Multiple ? '[]' : ''), $this->Title ?: false)
+        $field = FileField::create($this->Name . ($this->Multiple ? '[]' : ''), $this->Title ?: false)
             ->setFieldHolderTemplate(EditableFormField::class . '_holder')
             ->setTemplate(__CLASS__)
             ->setValidator(Injector::inst()->get(Upload_Validator::class . '.userforms', false));
@@ -250,7 +250,7 @@ class EditableFileField extends EditableFormField
 
         $this->doUpdateFormField($field);
 
-        $field->setAttribute('htmlID', $originalName);
+        $field->setAttribute('htmlID', $this->Name);
 
         return $field;
     }
