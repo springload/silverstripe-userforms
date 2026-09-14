@@ -318,28 +318,20 @@ JS
                         }
 
                         $files = $_FILES[$field->Name];
+                        $fileNames = is_array($files['name']) ? $files['name'] : [$files['name']];
 
-                        if (is_array($files['name'])) {
-                            foreach (array_keys($files['name']) as $index) {
-                                $fileData = [];
-                                foreach ($files as $key => $value) {
-                                    $fileData[$key] = $value[$index];
-                                }
-
-                                if (!$file = $this->processUploadedFile($fileData, $field, $form, $attachments)) {
-                                    return;
-                                }
-
-                                // write file to form field
-                                $submittedField->UploadedFiles()->add($file);
+                        foreach (array_keys($fileNames) as $index) {
+                            $fileData = [];
+                            foreach ($files as $key => $value) {
+                                $fileData[$key] = is_array($value) ? $value[$index] : $value;
                             }
-                        } else {
-                            if (!$file = $this->processUploadedFile($files, $field, $form, $attachments)) {
+
+                            if (!$file = $this->processUploadedFile($fileData, $field, $form, $attachments)) {
                                 return;
                             }
 
                             // write file to form field
-                            $submittedField->UploadedFileID = $file->ID;
+                            $submittedField->UploadedFiles()->add($file);
                         }
                     }
                 }

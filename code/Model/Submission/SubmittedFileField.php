@@ -114,19 +114,12 @@ class SubmittedFileField extends SubmittedFormField
     /**
      * Return the link for the file attached to this submitted form field.
      * Keeping this around for backward compatibility
-     * @return string
+     * @return string|null
      */
     public function getLink($grant = true)
     {
-        if ($file = $this->getUploadedFileFromDraft()) {
-            if ($file->exists()) {
-                $url = $file->getURL($grant);
-                if ($url) {
-                    return Director::absoluteURL($url);
-                }
-                return null;
-            }
-        }
+        $links = $this->getLinks($grant);
+        return $links ? reset($links) : null;
     }
 
     /**
@@ -154,17 +147,12 @@ class SubmittedFileField extends SubmittedFormField
      * As uploaded files are stored in draft by default, this retrieves the
      * uploaded file from draft mode rather than using the current stage.
      * Keeping this around for backward compatibility
-     * @return File
+     * @return File|null
      */
     public function getUploadedFileFromDraft()
     {
-        $fileId = $this->UploadedFileID;
-
-        return Versioned::withVersionedMode(function () use ($fileId) {
-            Versioned::set_stage(Versioned::DRAFT);
-
-            return File::get()->byID($fileId);
-        });
+        $files = $this->getUploadedFilesFromDraft();
+        return $files ? reset($files) : null;
     }
 
     /**
@@ -197,13 +185,12 @@ class SubmittedFileField extends SubmittedFormField
     /**
      * Return the name of the file, if present
      *
-     * @return string
+     * @return string|null
      */
     public function getFileName()
     {
-        if ($file = $this->getUploadedFileFromDraft()) {
-            return $file->Name;
-        }
+        $names = $this->getFileNames();
+        return $names ? reset($names) : null;
     }
 
     /**
