@@ -46,4 +46,24 @@ class UserFormFileExtensionTest extends SapphireTest
 
         $this->assertEquals(UserFormFileExtension::USER_FORM_UPLOAD_TRUE, $file->UserFormUpload);
     }
+
+    public function testUpdateIsUserFormUploadTrueViaUploadedFiles()
+    {
+        $file = File::create();
+        $file->write();
+        $this->assertNull($file->UserFormUpload);
+
+        $submittedFileField = SubmittedFileField::create();
+        $submittedFileField->write();
+        $submittedFileField->UploadedFiles()->add($file);
+
+        $value = false;
+        $file->invokeWithExtensions('updateTrackedFormUpload', $value);
+        $this->assertTrue($value);
+
+        // refresh DataObject to get latest DB changes
+        $file = File::get()->byID($file->ID);
+
+        $this->assertEquals(UserFormFileExtension::USER_FORM_UPLOAD_TRUE, $file->UserFormUpload);
+    }
 }

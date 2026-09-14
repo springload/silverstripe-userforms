@@ -69,6 +69,21 @@ class SubmittedFileFieldTest extends SapphireTest
         $this->assertNull($liveVersion, 'Live file has been deleted');
     }
 
+    public function testGetFileNamesFromUploadedFilesRelation()
+    {
+        $submittedFile = SubmittedFileField::create();
+        $submittedFile->Name = 'File';
+        $submittedFile->ParentID = $this->submittedForm->ID;
+        $submittedFile->write();
+        $submittedFile->UploadedFiles()->add($this->file);
+
+        $fileNames = $submittedFile->getFileNames();
+
+        $this->assertIsArray($fileNames);
+        $this->assertStringContainsString('test-SubmittedFileFieldTest', $fileNames[0]);
+        $this->assertSame(0, (int) $submittedFile->UploadedFileID);
+    }
+
     public function testGetFormattedValue()
     {
         // Set an explicit base URL so we get a reliable value for the test

@@ -23,6 +23,7 @@ use SilverStripe\UserForms\Control\UserDefinedFormController;
 use SilverStripe\UserForms\Model\EditableFormField\EditableFileField;
 use SilverStripe\UserForms\Model\EditableFormField\EditableTextField;
 use SilverStripe\UserForms\Model\Recipient\EmailRecipient;
+use SilverStripe\UserForms\Model\Submission\SubmittedFileField;
 use SilverStripe\UserForms\Model\Submission\SubmittedFormField;
 use SilverStripe\UserForms\Model\UserDefinedForm;
 use SilverStripe\UserForms\Tests\Control\fixtures\SizeStringTestableController;
@@ -502,6 +503,38 @@ class UserDefinedFormControllerTest extends FunctionalTest
         $this->assertEmailSent('nodata@example.com', 'no-reply@example.com', 'Email Subject');
         $nodata = $this->findEmail('nodata@example.com', 'no-reply@example.com', 'Email Subject');
         $this->assertEmpty($nodata['AttachedFiles'], 'Recipients with HideFormData do not receive attachment');
+    }
+
+    public function testMultipleFileUploadUsesUploadedFilesRelation()
+    {
+        Config::modify()->set(Upload_Validator::class, 'use_is_uploaded_file', false);
+
+        $userForm = $this->setupFormFrontend('upload-form');
+        $controller = new UserDefinedFormController($userForm);
+        $field = $this->objFromFixture(EditableFileField::class, 'file-field-1');
+        $field->IsMultiple = true;
+        $field->write();
+
+        $path = realpath(__DIR__ . '/fixtures/testfile.jpg');
+        $data = [
+            $field->Name => [
+                'name' => ['testfile.jpg', 'testfile-v2.jpg'],
+                'type' => ['image/jpeg', 'image/jpeg'],
+                'tmp_name' => [$path, $path],
+                'error' => [0, 0],
+                'size' => [filesize($path ?? ''), filesize($path ?? '')],
+            ]
+        ];
+        $_FILES[$field->Name] = $data[$field->Name];
+
+        $controller->getRequest()->setSession(new Session([]));
+        $controller->process($data, $controller->Form());
+
+        $submittedField = SubmittedFileField::get()->filter(['Name' => $field->Name])->first();
+
+        $this->assertNotNull($submittedField);
+        $this->assertSame(2, $submittedField->UploadedFiles()->count());
+        $this->assertSame(0, (int) $submittedField->UploadedFileID);
     }
 
     public function testMissingFolderCreated()
