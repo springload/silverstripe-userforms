@@ -537,6 +537,43 @@ class UserDefinedFormControllerTest extends FunctionalTest
         $this->assertSame(0, (int) $submittedField->UploadedFileID);
     }
 
+    public function testOverallAttachmentSizeLimit()
+    {
+        Config::modify()->set(Upload_Validator::class, 'use_is_uploaded_file', false);
+
+        $userForm = $this->setupFormFrontend('upload-form');
+        $controller = new UserDefinedFormController($userForm);
+        $field = $this->objFromFixture(EditableFileField::class, 'file-field-1');
+        $field->IsMultiple = true;
+        $field->write();
+
+        $path = realpath(__DIR__ . '/fixtures/testfile.jpg');
+        $fileSize = filesize($path ?? '');
+        Config::modify()->set(
+            UserDefinedFormController::class,
+            'maximum_email_attachment_size',
+            $fileSize + 1
+        );
+
+        $data = [
+            $field->Name => [
+                'name' => ['testfile.jpg', 'testfile-v2.jpg'],
+                'type' => ['image/jpeg', 'image/jpeg'],
+                'tmp_name' => [$path, $path],
+                'error' => [0, 0],
+                'size' => [$fileSize, $fileSize],
+            ]
+        ];
+        $_FILES[$field->Name] = $data[$field->Name];
+
+        $controller->getRequest()->setSession(new Session([]));
+        $this->clearEmails();
+        $controller->process($data, $controller->Form());
+
+        $email = $this->findEmail('test@example.com', 'no-reply@example.com', 'Email Subject');
+        $this->assertCount(1, $email['AttachedFiles']);
+    }
+
     public function testMissingFolderCreated()
     {
         Config::modify()->set(Upload_Validator::class, 'use_is_uploaded_file', false);

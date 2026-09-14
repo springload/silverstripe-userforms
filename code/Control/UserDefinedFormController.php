@@ -283,6 +283,7 @@ JS
         }
 
         $attachments = [];
+        $totalAttachmentSize = 0;
         $submittedFields = ArrayList::create();
 
         foreach ($this->data()->Fields() as $field) {
@@ -326,7 +327,7 @@ JS
                                 $fileData[$key] = is_array($value) ? $value[$index] : $value;
                             }
 
-                            if (!$file = $this->processUploadedFile($fileData, $field, $form, $attachments)) {
+                            if (!$file = $this->processUploadedFile($fileData, $field, $form, $attachments, $totalAttachmentSize)) {
                                 return;
                             }
 
@@ -539,16 +540,17 @@ JS
     /**
      * Create and process a single uploaded file from the submitted form data.
      *
-     * The file is written in the configured upload stage and, if small enough, added to the
-     * email attachments for the field it was submitted against.
+     * The file is written in the configured upload stage and added to the email attachments
+     * until the overall attachment size limit is reached.
      *
      * @param array $fileData The entry from $_FILES for this file
      * @param EditableFormField $field The form field the file was submitted against
      * @param Form $form The submitted form
      * @param array $attachments Email attachments, indexed by field name
+     * @param int $totalAttachmentSize Running total size of files already attached to emails
      * @return File|null
      */
-    private function processUploadedFile($fileData, $field, $form, &$attachments)
+    private function processUploadedFile($fileData, $field, $form, &$attachments, &$totalAttachmentSize = 0)
     {
         $file = Versioned::withVersionedMode(function () use ($fileData, $field, $form) {
             $stage = Injector::inst()->get(UserDefinedFormController::class)->config()->get('file_upload_stage');
@@ -586,9 +588,11 @@ JS
             AssetAdmin::singleton()->generateThumbnails($file);
         }
 
-        // attach a file to recipient email only if lower than configured size
-        if ($file->getAbsoluteSize() <= $this->getMaximumAllowedEmailAttachmentSize()) {
+        // attach files to recipient emails until the overall attachment size limit is reached
+        $fileSize = $file->getAbsoluteSize();
+        if ($totalAttachmentSize + $fileSize <= $this->getMaximumAllowedEmailAttachmentSize()) {
             $attachments[$field->Name][] = $file;
+            $totalAttachmentSize += $fileSize;
         }
 
         return $file;
