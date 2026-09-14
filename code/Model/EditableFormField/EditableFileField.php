@@ -30,6 +30,7 @@ use SilverStripe\UserForms\Model\Submission\SubmittedFileField;
  * @property int $FolderConfirmed
  * @property int $FolderID
  * @property float $MaxFileSizeMB
+ * @property bool $IsMultiple
  * @method Folder Folder()
  */
 class EditableFileField extends EditableFormField
@@ -42,7 +43,7 @@ class EditableFileField extends EditableFormField
     private static $db = [
         'MaxFileSizeMB' => 'Float',
         'FolderConfirmed' => 'Boolean',
-        'Multiple' => 'Boolean',
+        'IsMultiple' => 'Boolean',
     ];
 
     private static $has_one = [
@@ -178,7 +179,7 @@ class EditableFileField extends EditableFormField
 
             $fields->addFieldToTab(
                 'Root.Main',
-                CheckboxField::create('Multiple')
+                CheckboxField::create('IsMultiple')
                     ->setTitle('Allow multiple files')
             );
 
@@ -215,7 +216,7 @@ class EditableFileField extends EditableFormField
 
     public function getFormField()
     {
-        $field = FileField::create($this->Name . ($this->Multiple ? '[]' : ''), $this->Title ?: false)
+        $field = FileField::create($this->Name . ($this->IsMultiple ? '[]' : ''), $this->Title ?: false)
             ->setFieldHolderTemplate(EditableFormField::class . '_holder')
             ->setTemplate(__CLASS__)
             ->setValidator(Injector::inst()->get(Upload_Validator::class . '.userforms', false));
@@ -237,7 +238,7 @@ class EditableFileField extends EditableFormField
             $field->getValidator()->setAllowedMaxFileSize(static::get_php_max_file_size());
         }
 
-        if ($this->Multiple) {
+        if ($this->IsMultiple) {
             $field->setAttribute('multiple', 'multiple');
         }
 
@@ -315,6 +316,6 @@ class EditableFileField extends EditableFormField
 
     public function getSelectorFieldOnly()
     {
-        return $this->Multiple ? "[name='{$this->Name}[]']" : parent::getSelectorFieldOnly();
+        return $this->IsMultiple ? "[name='{$this->Name}[]']" : parent::getSelectorFieldOnly();
     }
 }

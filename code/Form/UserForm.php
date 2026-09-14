@@ -176,7 +176,7 @@ class UserForm extends Form
         foreach ($requiredFields as $requiredField) {
             $requiredName = $requiredField->Name;
 
-            if ($requiredField instanceof EditableFileField && $requiredField->Multiple) {
+            if ($requiredField instanceof EditableFileField && $requiredField->IsMultiple) {
                 $requiredName .= '[]';
             }
 
