@@ -7,6 +7,7 @@ use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Convert;
 use SilverStripe\Core\Extension;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\ManyManyList;
 use SilverStripe\ORM\Queries\SQLUpdate;
 use SilverStripe\UserForms\Control\UserDefinedFormController;
 use SilverStripe\UserForms\Model\Submission\SubmittedFileField;
@@ -14,6 +15,7 @@ use SilverStripe\UserForms\Model\Submission\SubmittedFileField;
 /**
  * @property string $UserFormUpload
  * @method SubmittedFileField SubmittedFileField()
+ * @method ManyManyList<SubmittedFileField> SubmittedFileFields()
  *
  * @extends Extension<File&static>
  */
@@ -32,6 +34,10 @@ class UserFormFileExtension extends Extension
 
     private static $belongs_to = [
         'SubmittedFileField' => SubmittedFileField::class
+    ];
+
+    private static $belongs_many_many = [
+        'SubmittedFileFields' => SubmittedFileField::class . '.UploadedFiles',
     ];
 
     /**
@@ -54,7 +60,7 @@ class UserFormFileExtension extends Extension
         if ($file->ClassName == Folder::class) {
             $value = false;
         } else {
-            $value = $file->SubmittedFileField()->exists();
+            $value = $file->SubmittedFileField()->exists() || $file->SubmittedFileFields()->exists();
         }
         $this->updateDB($value);
     }

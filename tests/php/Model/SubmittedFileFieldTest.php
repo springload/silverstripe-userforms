@@ -47,7 +47,7 @@ class SubmittedFileFieldTest extends SapphireTest
 
     public function testDeletingSubmissionRemovesFile()
     {
-        $this->assertStringContainsString('test-SubmittedFileFieldTest', $this->submittedFile->getFileName(), 'Submitted file is linked');
+        $this->assertStringContainsString('test-SubmittedFileFieldTest', $this->submittedFile->getFileNames()[0], 'Submitted file is linked');
 
         $this->submittedForm->delete();
         $fileId = $this->file->ID;
@@ -69,11 +69,26 @@ class SubmittedFileFieldTest extends SapphireTest
         $this->assertNull($liveVersion, 'Live file has been deleted');
     }
 
+    public function testGetFileNamesFromUploadedFilesRelation()
+    {
+        $submittedFile = SubmittedFileField::create();
+        $submittedFile->Name = 'File';
+        $submittedFile->ParentID = $this->submittedForm->ID;
+        $submittedFile->write();
+        $submittedFile->UploadedFiles()->add($this->file);
+
+        $fileNames = $submittedFile->getFileNames();
+
+        $this->assertIsArray($fileNames);
+        $this->assertStringContainsString('test-SubmittedFileFieldTest', $fileNames[0]);
+        $this->assertSame(0, (int) $submittedFile->UploadedFileID);
+    }
+
     public function testGetFormattedValue()
     {
         // Set an explicit base URL so we get a reliable value for the test
         Director::config()->set('alternate_base_url', 'http://mysite.com');
-        $fileName = $this->submittedFile->getFileName();
+        $fileName = $this->submittedFile->getFileNames()[0];
         $link = 'http://mysite.com/assets/3c01bdbb26/test-SubmittedFileFieldTest.txt';
 
         $this->file->CanViewType = 'OnlyTheseUsers';
