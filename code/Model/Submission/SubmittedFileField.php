@@ -108,7 +108,9 @@ class SubmittedFileField extends SubmittedFormField
      */
     public function getExportValue()
     {
-        return ($links = $this->getLinks()) ? implode("\r", $links) : '';
+        // Do not ask for a grant - File::getURL() adds one anyway for a user who can view the file,
+        // so passing true here would give the exporting session access to files it cannot view
+        return ($links = $this->getLinks(false)) ? implode("\r", $links) : '';
     }
 
     /**
